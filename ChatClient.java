@@ -73,9 +73,9 @@ public class ChatClient implements Runnable
     }
 
 
-    public void handle(Message message)
-    {
-        String msg = message.getData();
+    public void handle(Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        byte[] encryptedData = message.getEncryptedData();
+        String msg = this.utils.decryptMessage(encryptedData, message.getSymmetric());
         // Receives message from server
         if (msg.equals(".quit"))
         {
@@ -213,7 +213,7 @@ class ChatClientThread extends Thread
             {
                 System.out.println("Listening error: " + ioe.getMessage());
                 client.stop();
-            } catch (ClassNotFoundException e) {
+            } catch (Exception e) {
             e.printStackTrace();
         }
         }

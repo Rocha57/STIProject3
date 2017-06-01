@@ -1,7 +1,10 @@
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.net.*;
 import java.io.*;
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 
@@ -12,6 +15,7 @@ public class ChatServer implements Runnable
 	private ServerSocket server_socket = null;
 	private Thread thread = null;
 	private int clientCount = 0;
+	private Utils utils = null;
 
 	public ChatServer(int port)
     	{  
@@ -21,6 +25,7 @@ public class ChatServer implements Runnable
 			System.out.println("Binding to port " + port);
             		server_socket = new ServerSocket(port);  
             		System.out.println("Server started: " + server_socket);
+				this.utils = new Utils();
             		start();
         	}
       		catch(IOException ioexception)
@@ -82,9 +87,9 @@ public class ChatServer implements Runnable
         	return -1;
     	}
     
-    	public synchronized void handle(int ID, Message message)
-    	{
-			String input = message.getData();
+    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+			byte[] encryptedData = message.getEncryptedData();
+			String input = this.utils.decryptMessage(encryptedData, message.getSymmetric());
         	if (input.equals(".quit"))
             	{  
                 	int leaving_id = findClient(ID);
@@ -190,8 +195,10 @@ class ChatServerThread extends Thread
     {   
         try
         {
-			Key key = utils.generateKey();
-			Message message = new Message(msg, key);
+			Key symmetric  = utils.generateKey();
+			byte[] encrypted = utils.encryptMessage(msg.getBytes(), symmetric);
+			Message message = new Message(msg, symmetric);
+			message.setEncryptedData(encrypted);
 			streamOut.writeObject(message);
             streamOut.flush();
         }
@@ -202,6 +209,12 @@ class ChatServerThread extends Thread
             server.remove(ID);
             stop();
         } catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
 			e.printStackTrace();
 		}
 	}
@@ -229,7 +242,7 @@ class ChatServerThread extends Thread
                 System.out.println(ID + " ERROR reading: " + ioe.getMessage());
                 server.remove(ID);
                 stop();
-            } catch (ClassNotFoundException e) {
+            } catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
