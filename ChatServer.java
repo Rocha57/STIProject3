@@ -1,4 +1,3 @@
-
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -107,8 +106,12 @@ public class ChatServer implements Runnable
 			String input = this.utils.decryptMessage(encryptedData, key);
 			int id = findClient(ID);
 			boolean verified = utils.verifySign(message.getSignatureBytes(), input.getBytes(), clients[id].getClientPublicKey());
+			if (!verified) {
+				System.out.println("WARNING - MESSAGE COMPROMISED");
+				return;
+			}
 			if (input.equals(".quit"))
-            	{  
+            	{
                 	int leaving_id = findClient(ID);
                 	// Client exits
                 	clients[leaving_id].send(".quit");

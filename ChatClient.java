@@ -95,6 +95,10 @@ public class ChatClient implements Runnable
             boolean verified = utils.verifySign(message.getSignatureBytes(), msg.getBytes(), serverPublicKey);
             //System.out.println(verified);
             // Receives message from server
+            if (!verified){
+                System.out.println("WARNING - MESSAGE COMPROMISED");
+                return;
+            }
             if (msg.equals(".quit"))
             {
                 // Leaving, quit command
