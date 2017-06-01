@@ -76,6 +76,7 @@ public class ChatServer implements Runnable
     	public synchronized void handle(int ID, Message message)
     	{
 			String input = message.getData();
+			System.out.println(input);
         	if (input.equals(".quit"))
             	{  
                 	int leaving_id = findClient(ID);

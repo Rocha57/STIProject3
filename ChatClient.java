@@ -63,8 +63,9 @@ public class ChatClient implements Runnable
     }
 
 
-    public void handle(String msg)
+    public void handle(Message message)
     {
+        String msg = message.getData();
         // Receives message from server
         if (msg.equals(".quit"))
         {
@@ -155,7 +156,7 @@ class ChatClientThread extends Thread
 {
     private Socket           socket   = null;
     private ChatClient       client   = null;
-    private DataInputStream  streamIn = null;
+    private ObjectInputStream  streamIn = null;
 
     public ChatClientThread(ChatClient _client, Socket _socket)
     {
@@ -169,7 +170,7 @@ class ChatClientThread extends Thread
     {
         try
         {
-            streamIn  = new DataInputStream(socket.getInputStream());
+            streamIn  = new ObjectInputStream(socket.getInputStream());
         }
         catch(IOException ioe)
         {
@@ -196,13 +197,15 @@ class ChatClientThread extends Thread
         while (true)
         {   try
             {
-                client.handle(streamIn.readUTF());
+                client.handle((Message)streamIn.readObject());
             }
             catch(IOException ioe)
             {
                 System.out.println("Listening error: " + ioe.getMessage());
                 client.stop();
-            }
+            } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
         }
     }
 }
