@@ -1,7 +1,5 @@
 import javax.crypto.*;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
 
 public class Utils {
 
@@ -30,4 +28,13 @@ public class Utils {
         return new String(plainBytes);
     }
 
-}
+
+    public KeyPair kPGGen(int keysize) throws NoSuchAlgorithmException {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(keysize);
+        KeyPair kp = kpg.genKeyPair();
+        return kp;
+
+    }
+
+    }

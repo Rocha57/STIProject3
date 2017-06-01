@@ -1,4 +1,6 @@
 
+import com.sun.tools.doclets.formats.html.SourceToHTMLConverter;
+
 import java.net.*;
 import java.io.*;
 import java.security.*;
@@ -14,6 +16,9 @@ public class ChatClient implements Runnable
     private ObjectOutputStream streamOut = null;
     private ChatClientThread client    = null;
     private Utils utils = null;
+    private Key serverPublicKey = null;
+    private Key clientPublicKey = null;
+    private Key clientPrivateKey = null;
 
     public ChatClient(String serverName, int serverPort)
     {
@@ -25,6 +30,13 @@ public class ChatClient implements Runnable
             socket = new Socket(serverName, serverPort);
             utils = new Utils();
             System.out.println("Connected to server: " + socket);
+
+            this.utils = new Utils();
+            KeyPair kp = this.utils.kPGGen(1024);
+
+            this.clientPrivateKey = kp.getPrivate();
+            this.clientPublicKey = kp.getPublic();
+
             start();
         }
 
@@ -53,7 +65,7 @@ public class ChatClient implements Runnable
                String data = (String) console.readLine();
                Key symmetric  = utils.generateKey();
                byte[] encrypted = utils.encryptMessage(data.getBytes(), symmetric);
-               Message message = new Message(data, symmetric);
+               Message message = new Message(encrypted, symmetric);
                message.setEncryptedData(encrypted);
                /*System.out.println(message.getData());
                System.out.println(new String(message.getEncryptedData()));
@@ -75,17 +87,26 @@ public class ChatClient implements Runnable
 
     public void handle(Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
         byte[] encryptedData = message.getEncryptedData();
-        String msg = this.utils.decryptMessage(encryptedData, message.getSymmetric());
-        // Receives message from server
-        if (msg.equals(".quit"))
+        if(message.getSharekey()==0){
+            String msg = this.utils.decryptMessage(encryptedData, message.getSymmetric());
+
+            // Receives message from server
+            if (msg.equals(".quit"))
+            {
+                // Leaving, quit command
+                System.out.println("Exiting...Please press RETURN to exit ...");
+                stop();
+            }
+            else
+                // else, writes message received from server to console
+                System.out.println(msg);
+            }
+        else if(message.getSharekey()==1)
         {
-            // Leaving, quit command
-            System.out.println("Exiting...Please press RETURN to exit ...");
-            stop();
+            System.out.println("Server key shared!");
+            this.serverPublicKey = message.getKeyToShare();
+
         }
-        else
-            // else, writes message received from server to console
-            System.out.println(msg);
     }
 
 
@@ -118,6 +139,10 @@ public class ChatClient implements Runnable
     {
         console   = new DataInputStream(System.in);
         streamOut = new ObjectOutputStream(socket.getOutputStream());
+
+        Message keyShareMessage = new Message(this.clientPublicKey);
+        streamOut.writeObject(keyShareMessage);
+        System.out.println("KEY: "+this.clientPublicKey.toString());
         if (thread == null)
         {
             client = new ChatClientThread(this, socket);
@@ -218,4 +243,6 @@ class ChatClientThread extends Thread
         }
         }
     }
+
+
 }

@@ -6,6 +6,7 @@ import java.net.*;
 import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 
 
@@ -16,6 +17,8 @@ public class ChatServer implements Runnable
 	private Thread thread = null;
 	private int clientCount = 0;
 	private Utils utils = null;
+	private Key privateKey;
+	private Key publicKey;
 
 	public ChatServer(int port)
     	{  
@@ -25,7 +28,13 @@ public class ChatServer implements Runnable
 			System.out.println("Binding to port " + port);
             		server_socket = new ServerSocket(port);  
             		System.out.println("Server started: " + server_socket);
+				//Creates server keypair
 				this.utils = new Utils();
+				KeyPair kp = this.utils.kPGGen(1024);
+
+				this.privateKey = kp.getPrivate();
+				this.publicKey = kp.getPublic();
+
             		start();
         	}
       		catch(IOException ioexception)
@@ -42,7 +51,7 @@ public class ChatServer implements Runnable
         	while (thread != null)
         	{  
             		try
-            		{  
+            		{
                 		// Adds new thread for new client
                 		System.out.println("Waiting for a client ..."); 
                 		addThread(server_socket.accept()); 
@@ -88,9 +97,13 @@ public class ChatServer implements Runnable
     	}
     
     	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+
+			if(message.getSharekey()==0){
+
 			byte[] encryptedData = message.getEncryptedData();
 			String input = this.utils.decryptMessage(encryptedData, message.getSymmetric());
-        	if (input.equals(".quit"))
+
+			if (input.equals(".quit"))
             	{  
                 	int leaving_id = findClient(ID);
                 	// Client exits
@@ -106,7 +119,15 @@ public class ChatServer implements Runnable
             		for (int i = 0; i < clientCount; i++)
                 		clients[i].send(ID + ": " + input);   
     	}
-    
+    	else
+    		{
+    			int id = findClient(ID);
+    			clients[id].setClientPublicKey(message.getKeyToShare());
+				System.out.println("client Pub key shared "+message.getKeyToShare().toString());
+			}
+	}
+
+
     	public synchronized void remove(int ID)
     	{  
         	int pos = findClient(ID);
@@ -141,11 +162,15 @@ public class ChatServer implements Runnable
             		// Adds thread for new accepted client
             		System.out.println("Client accepted: " + socket);
             		clients[clientCount] = new ChatServerThread(this, socket);
-         
+
+
            		try
             		{  
                 		clients[clientCount].open(); 
-                		clients[clientCount].start();  
+                		clients[clientCount].start();
+						//share server public key
+						Message sharKeyMessage = new Message(this.publicKey);
+						clients[clientCount].shareKey(sharKeyMessage);
                 		clientCount++; 
             		}
             		catch(IOException ioe)
@@ -179,7 +204,17 @@ class ChatServerThread extends Thread
     private int              ID        = -1;
     private ObjectInputStream  streamIn  =  null;
     private ObjectOutputStream streamOut = null;
+
+	public Key getClientPublicKey() {
+		return clientPublicKey;
+	}
+
+	public void setClientPublicKey(Key clientPublicKey) {
+		this.clientPublicKey = clientPublicKey;
+	}
+
 	private Utils utils = null;
+	private Key clientPublicKey;
 
    
     public ChatServerThread(ChatServer _server, Socket _socket) throws NoSuchPaddingException, NoSuchAlgorithmException {
@@ -188,6 +223,7 @@ class ChatServerThread extends Thread
         socket = _socket;
         ID     = socket.getPort();
 		utils = new Utils();
+
     }
     
     // Sends message to client
@@ -197,7 +233,7 @@ class ChatServerThread extends Thread
         {
 			Key symmetric  = utils.generateKey();
 			byte[] encrypted = utils.encryptMessage(msg.getBytes(), symmetric);
-			Message message = new Message(msg, symmetric);
+			Message message = new Message(encrypted, symmetric);
 			message.setEncryptedData(encrypted);
 			streamOut.writeObject(message);
             streamOut.flush();
@@ -218,7 +254,21 @@ class ChatServerThread extends Thread
 			e.printStackTrace();
 		}
 	}
-    
+
+	public void shareKey(Message msg)
+	{
+		try {
+			streamOut.writeObject(msg);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			streamOut.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
     // Gets id for client
     public int getID()
     {  
