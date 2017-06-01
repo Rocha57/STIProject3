@@ -13,6 +13,7 @@ public class ChatClient implements Runnable
     private DataInputStream  console   = null;
     private ObjectOutputStream streamOut = null;
     private ChatClientThread client    = null;
+    private Utils utils = null;
 
     public ChatClient(String serverName, int serverPort)
     {
@@ -22,6 +23,7 @@ public class ChatClient implements Runnable
         {
             // Establishes connection with server (name and port)
             socket = new Socket(serverName, serverPort);
+            utils = new Utils();
             System.out.println("Connected to server: " + socket);
             start();
         }
@@ -36,9 +38,11 @@ public class ChatClient implements Runnable
         {
             // Other error establishing connection
             System.out.println("Error establishing connection - unexpected exception: " + ioexception.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-   }
+    }
 
    public void run()
    {
@@ -47,14 +51,20 @@ public class ChatClient implements Runnable
            try
            {
                String data = (String) console.readLine();
-               Message message = new Message(data);
+               Key symmetric  = utils.generateKey();
+               byte[] encrypted = utils.encryptMessage(data.getBytes(), symmetric);
+               Message message = new Message(data, symmetric);
+               message.setEncryptedData(encrypted);
+               /*System.out.println(message.getData());
+               System.out.println(new String(message.getEncryptedData()));
+               System.out.println(utils.decryptMessage(encrypted, symmetric));*/
                // Sends message from console to server
                //streamOut.writeUTF(simmetricEncryption(console.readLine()));
                streamOut.writeObject(message);
                streamOut.flush();
            }
 
-           catch(IOException ioexception)
+           catch(Exception ioexception)
            {
                System.out.println("Error sending string to server: " + ioexception.getMessage());
                stop();

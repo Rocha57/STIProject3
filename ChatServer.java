@@ -1,6 +1,9 @@
 
+import javax.crypto.NoSuchPaddingException;
 import java.net.*;
 import java.io.*;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 
 
 public class ChatServer implements Runnable
@@ -24,8 +27,10 @@ public class ChatServer implements Runnable
       		{  
             		// Error binding to port
             		System.out.println("Binding error (port=" + port + "): " + ioexception.getMessage());
-        	}
-    	}
+        	} catch (Exception e) {
+			e.printStackTrace();
+		}
+		}
     
     	public void run()
     	{  
@@ -40,8 +45,12 @@ public class ChatServer implements Runnable
             		catch(IOException ioexception)
             		{
                 		System.out.println("Accept error: " + ioexception); stop();
-            		}
-        	}
+            		} catch (NoSuchAlgorithmException e) {
+						e.printStackTrace();
+					} catch (NoSuchPaddingException e) {
+						e.printStackTrace();
+					}
+			}
     	}
     
    	public void start()
@@ -76,7 +85,6 @@ public class ChatServer implements Runnable
     	public synchronized void handle(int ID, Message message)
     	{
 			String input = message.getData();
-			System.out.println(input);
         	if (input.equals(".quit"))
             	{  
                 	int leaving_id = findClient(ID);
@@ -122,8 +130,7 @@ public class ChatServer implements Runnable
         	}
     	}
     
-    	private void addThread(Socket socket)
-    	{  
+    	private void addThread(Socket socket) throws NoSuchAlgorithmException, NoSuchPaddingException {
     	    	if (clientCount < clients.length)
         	{  
             		// Adds thread for new accepted client
@@ -167,14 +174,15 @@ class ChatServerThread extends Thread
     private int              ID        = -1;
     private ObjectInputStream  streamIn  =  null;
     private ObjectOutputStream streamOut = null;
+	private Utils utils = null;
 
    
-    public ChatServerThread(ChatServer _server, Socket _socket)
-    {  
+    public ChatServerThread(ChatServer _server, Socket _socket) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super();
         server = _server;
         socket = _socket;
         ID     = socket.getPort();
+		utils = new Utils();
     }
     
     // Sends message to client
@@ -182,7 +190,8 @@ class ChatServerThread extends Thread
     {   
         try
         {
-			Message message = new Message(msg);
+			Key key = utils.generateKey();
+			Message message = new Message(msg, key);
 			streamOut.writeObject(message);
             streamOut.flush();
         }
@@ -192,8 +201,10 @@ class ChatServerThread extends Thread
             System.out.println(ID + " ERROR sending message: " + ioexception.getMessage());
             server.remove(ID);
             stop();
-        }
-    }
+        } catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+	}
     
     // Gets id for client
     public int getID()
