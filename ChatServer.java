@@ -100,7 +100,7 @@ public class ChatServer implements Runnable
         	return -1;
     	}
     
-    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException, SignatureException {
+    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException, SignatureException, IOException {
 
 			if(message.getSharekey()==0){
 
@@ -130,7 +130,7 @@ public class ChatServer implements Runnable
             		for (int i = 0; i < clientCount; i++)
                 		clients[i].send(ID + ": " + input);
 
-					if(messageCounter>2)
+					if(messageCounter>100)
 					{
 						this.utils = new Utils();
 						KeyPair kp = this.utils.kPGGen(1024);
@@ -146,7 +146,17 @@ public class ChatServer implements Runnable
 						this.messageCounter = 0;
 					}
     	}
-    	else
+    	else if (message.getSharekey()==2)
+    	{
+    		//verifica se o ID do cliente nao e proibido (uso 23 como exemplo)
+    		if(message.getID()==23)
+    		{
+				System.out.println("CLient refused by ID");
+				clients[findClient(ID)].close();
+				return;
+			}
+		}
+    	else if (message.getSharekey()==1)
     		{
     			int id = findClient(ID);
     			clients[id].setClientPublicKey(message.getKeyToShare());

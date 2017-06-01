@@ -8,6 +8,12 @@ public class Message implements Serializable {
     private PublicKey keyToShare;
     private int sharekey;
 
+    public int getID() {
+        return ID;
+    }
+
+    private int ID;
+
     public int getSharekey() {
         return sharekey;
     }
@@ -35,6 +41,13 @@ public class Message implements Serializable {
     public Message(PublicKey keyToShare)
     {
         this.sharekey = 1;
+        this.keyToShare = keyToShare;
+    }
+
+    public Message(PublicKey keyToShare, int ID)
+    {
+        this.sharekey = 2;
+        this.ID = ID;
         this.keyToShare = keyToShare;
     }
 

@@ -20,6 +20,8 @@ public class ChatClient implements Runnable
     private PublicKey clientPublicKey = null;
     private PrivateKey clientPrivateKey = null;
     private int messageCounter = 0;
+    private  int ID ;
+    private boolean hasID = false;
 
     public ChatClient(String serverName, int serverPort)
     {
@@ -57,7 +59,46 @@ public class ChatClient implements Runnable
 
     }
 
-   public void run()
+    public ChatClient(String serverName, int serverPort, int ID)
+    {
+        this.ID = ID;
+        this.hasID = true;
+        System.out.println("Establishing connection to server...");
+
+        try
+        {
+            // Establishes connection with server (name and port)
+            socket = new Socket(serverName, serverPort);
+            utils = new Utils();
+            System.out.println("Connected to server: " + socket);
+
+            this.utils = new Utils();
+            KeyPair kp = this.utils.kPGGen(1024);
+
+            this.clientPrivateKey = kp.getPrivate();
+            this.clientPublicKey = kp.getPublic();
+
+            start();
+        }
+
+        catch(UnknownHostException uhe)
+        {
+            // Host unkwnown
+            System.out.println("Error establishing connection - host unknown: " + uhe.getMessage());
+        }
+
+        catch(IOException ioexception)
+        {
+            // Other error establishing connection
+            System.out.println("Error establishing connection - unexpected exception: " + ioexception.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    public void run()
    {
        while (thread != null)
        {
@@ -141,8 +182,15 @@ public class ChatClient implements Runnable
     {
         console   = new DataInputStream(System.in);
         streamOut = new ObjectOutputStream(socket.getOutputStream());
-
-        Message keyShareMessage = new Message(this.clientPublicKey);
+        Message keyShareMessage;
+        if(this.hasID)
+        {
+            //se o id for passado por argumeto é partilhado assimq ue se liga com o servidor
+            keyShareMessage = new Message(this.clientPublicKey, this.ID);
+        }
+        else{
+        keyShareMessage = new Message(this.clientPublicKey);
+        }
         streamOut.writeObject(keyShareMessage);
         //System.out.println("KEY: "+this.clientPublicKey.toString());
         if (thread == null)
@@ -179,10 +227,14 @@ public class ChatClient implements Runnable
     public static void main(String args[])
     {
         ChatClient client = null;
-        if (args.length != 2)
+        if (args.length > 3)
             // Displays correct usage syntax on stdout
-            System.out.println("Usage: java ChatClient host port");
-        else
+            System.out.println("Usage: java ChatClient host port ID(optional)");
+        else if(args.length == 3)
+        {
+            client = new ChatClient(args[0], Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+        }
+        else if(args.length == 2)
             // Calls new client
             client = new ChatClient(args[0], Integer.parseInt(args[1]));
     }
@@ -202,6 +254,8 @@ class ChatClientThread extends Thread
         open();
         start();
     }
+
+
 
     public void open()
     {
