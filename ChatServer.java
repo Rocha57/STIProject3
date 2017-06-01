@@ -73,8 +73,9 @@ public class ChatServer implements Runnable
         	return -1;
     	}
     
-    	public synchronized void handle(int ID, String input)
-    	{  
+    	public synchronized void handle(int ID, Message message)
+    	{
+			String input = message.getData();
         	if (input.equals(".quit"))
             	{  
                 	int leaving_id = findClient(ID);
@@ -163,8 +164,8 @@ class ChatServerThread extends Thread
     private ChatServer       server    = null;
     private Socket           socket    = null;
     private int              ID        = -1;
-    private DataInputStream  streamIn  =  null;
-    private DataOutputStream streamOut = null;
+    private ObjectInputStream  streamIn  =  null;
+    private ObjectOutputStream streamOut = null;
 
    
     public ChatServerThread(ChatServer _server, Socket _socket)
@@ -179,8 +180,9 @@ class ChatServerThread extends Thread
     public void send(String msg)
     {   
         try
-        {  
-            streamOut.writeUTF(msg);
+        {
+			Message message = new Message(msg);
+			streamOut.writeObject(message);
             streamOut.flush();
         }
        
@@ -206,8 +208,8 @@ class ChatServerThread extends Thread
         while (true)
         {  
             try
-            {  
-                server.handle(ID, streamIn.readUTF());
+            {
+				server.handle(ID,(Message) streamIn.readObject());
             }
          
             catch(IOException ioe)
@@ -215,17 +217,19 @@ class ChatServerThread extends Thread
                 System.out.println(ID + " ERROR reading: " + ioe.getMessage());
                 server.remove(ID);
                 stop();
-            }
-        }
+            } catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
     }
     
     
     // Opens thread
     public void open() throws IOException
     {  
-        streamIn = new DataInputStream(new 
+        streamIn = new ObjectInputStream(new
                         BufferedInputStream(socket.getInputStream()));
-        streamOut = new DataOutputStream(new
+        streamOut = new ObjectOutputStream(new
                         BufferedOutputStream(socket.getOutputStream()));
     }
     

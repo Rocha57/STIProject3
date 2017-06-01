@@ -11,7 +11,7 @@ public class ChatClient implements Runnable
     private Socket socket              = null;
     private Thread thread              = null;
     private DataInputStream  console   = null;
-    private DataOutputStream streamOut = null;
+    private ObjectOutputStream streamOut = null;
     private ChatClientThread client    = null;
 
     public ChatClient(String serverName, int serverPort)
@@ -46,8 +46,11 @@ public class ChatClient implements Runnable
        {
            try
            {
+               String data = (String) console.readLine();
+               Message message = new Message(data);
                // Sends message from console to server
-               streamOut.writeUTF(simmetricEncryption(console.readLine()));
+               //streamOut.writeUTF(simmetricEncryption(console.readLine()));
+               streamOut.writeObject(message);
                streamOut.flush();
            }
 
@@ -103,7 +106,7 @@ public class ChatClient implements Runnable
     public void start() throws IOException
     {
         console   = new DataInputStream(System.in);
-        streamOut = new DataOutputStream(socket.getOutputStream());
+        streamOut = new ObjectOutputStream(socket.getOutputStream());
         if (thread == null)
         {
             client = new ChatClientThread(this, socket);
