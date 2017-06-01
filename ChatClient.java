@@ -16,9 +16,9 @@ public class ChatClient implements Runnable
     private ObjectOutputStream streamOut = null;
     private ChatClientThread client    = null;
     private Utils utils = null;
-    private Key serverPublicKey = null;
-    private Key clientPublicKey = null;
-    private Key clientPrivateKey = null;
+    private PublicKey serverPublicKey = null;
+    private PublicKey clientPublicKey = null;
+    private PrivateKey clientPrivateKey = null;
 
     public ChatClient(String serverName, int serverPort)
     {
@@ -63,10 +63,10 @@ public class ChatClient implements Runnable
            try
            {
                String data = (String) console.readLine();
-               Key symmetric  = utils.generateKey();
+               SecretKey symmetric  = utils.generateKey();
                byte[] encrypted = utils.encryptMessage(data.getBytes(), symmetric);
-               Message message = new Message(encrypted, symmetric);
-               message.setEncryptedData(encrypted);
+               byte[] encryptedSymmetric = utils.wrapKey(symmetric,serverPublicKey);
+               Message message = new Message(encrypted, encryptedSymmetric);
                /*System.out.println(message.getData());
                System.out.println(new String(message.getEncryptedData()));
                System.out.println(utils.decryptMessage(encrypted, symmetric));*/
@@ -85,10 +85,11 @@ public class ChatClient implements Runnable
     }
 
 
-    public void handle(Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
-        byte[] encryptedData = message.getEncryptedData();
+    public void handle(Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException {
         if(message.getSharekey()==0){
-            String msg = this.utils.decryptMessage(encryptedData, message.getSymmetric());
+            byte[] encryptedData = message.getEncryptedData();
+            SecretKey key = utils.unwrapKey(message.getSymmetric(), this.clientPrivateKey);
+            String msg = this.utils.decryptMessage(encryptedData, key);
 
             // Receives message from server
             if (msg.equals(".quit"))
@@ -103,35 +104,10 @@ public class ChatClient implements Runnable
             }
         else if(message.getSharekey()==1)
         {
-            System.out.println("Server key shared!");
+            //System.out.println("Server key shared!");
             this.serverPublicKey = message.getKeyToShare();
 
         }
-    }
-
-
-    public String simmetricEncryption(String msg)
-    {
-      byte[] plainBytes = msg.getBytes();
-      String msgEncrypted = "";
-
-      try{
-            // Generate the key first
-            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-            keyGen.init(128);  // Key size
-            Key key = keyGen.generateKey();
-
-            // Create Cipher instance and initialize it to encrytion mode
-            Cipher cipher = Cipher.getInstance("AES");  // Transformation of the algorithm
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] cipherBytes = cipher.doFinal(plainBytes);
-            msgEncrypted = new String(cipherBytes);
-            System.out.println(" encrypted : "+msgEncrypted);
-
-        }catch(Exception ex){
-          ex.printStackTrace();
-      }
-            return msgEncrypted;
     }
 
     // Inits new client thread
@@ -142,7 +118,7 @@ public class ChatClient implements Runnable
 
         Message keyShareMessage = new Message(this.clientPublicKey);
         streamOut.writeObject(keyShareMessage);
-        System.out.println("KEY: "+this.clientPublicKey.toString());
+        //System.out.println("KEY: "+this.clientPublicKey.toString());
         if (thread == null)
         {
             client = new ChatClientThread(this, socket);

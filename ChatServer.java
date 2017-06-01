@@ -2,12 +2,10 @@
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import java.net.*;
 import java.io.*;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
 
 
 public class ChatServer implements Runnable
@@ -17,8 +15,8 @@ public class ChatServer implements Runnable
 	private Thread thread = null;
 	private int clientCount = 0;
 	private Utils utils = null;
-	private Key privateKey;
-	private Key publicKey;
+	private PrivateKey privateKey;
+	private PublicKey publicKey;
 
 	public ChatServer(int port)
     	{  
@@ -96,12 +94,13 @@ public class ChatServer implements Runnable
         	return -1;
     	}
     
-    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException {
 
 			if(message.getSharekey()==0){
 
 			byte[] encryptedData = message.getEncryptedData();
-			String input = this.utils.decryptMessage(encryptedData, message.getSymmetric());
+			SecretKey key = utils.unwrapKey(message.getSymmetric(), this.privateKey);
+			String input = this.utils.decryptMessage(encryptedData, key);
 
 			if (input.equals(".quit"))
             	{  
@@ -123,7 +122,7 @@ public class ChatServer implements Runnable
     		{
     			int id = findClient(ID);
     			clients[id].setClientPublicKey(message.getKeyToShare());
-				System.out.println("client Pub key shared "+message.getKeyToShare().toString());
+				//System.out.println("client Pub key shared "+message.getKeyToShare().toString());
 			}
 	}
 
@@ -205,16 +204,16 @@ class ChatServerThread extends Thread
     private ObjectInputStream  streamIn  =  null;
     private ObjectOutputStream streamOut = null;
 
-	public Key getClientPublicKey() {
+	public PublicKey getClientPublicKey() {
 		return clientPublicKey;
 	}
 
-	public void setClientPublicKey(Key clientPublicKey) {
+	public void setClientPublicKey(PublicKey clientPublicKey) {
 		this.clientPublicKey = clientPublicKey;
 	}
 
 	private Utils utils = null;
-	private Key clientPublicKey;
+	private PublicKey clientPublicKey;
 
    
     public ChatServerThread(ChatServer _server, Socket _socket) throws NoSuchPaddingException, NoSuchAlgorithmException {
@@ -231,10 +230,10 @@ class ChatServerThread extends Thread
     {   
         try
         {
-			Key symmetric  = utils.generateKey();
+			SecretKey symmetric  = utils.generateKey();
 			byte[] encrypted = utils.encryptMessage(msg.getBytes(), symmetric);
-			Message message = new Message(encrypted, symmetric);
-			message.setEncryptedData(encrypted);
+			byte[] encryptedSymmetric = utils.wrapKey(symmetric,clientPublicKey);
+			Message message = new Message(encrypted, encryptedSymmetric);
 			streamOut.writeObject(message);
             streamOut.flush();
         }
@@ -251,6 +250,8 @@ class ChatServerThread extends Thread
 		} catch (IllegalBlockSizeException e) {
 			e.printStackTrace();
 		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
 			e.printStackTrace();
 		}
 	}

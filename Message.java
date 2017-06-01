@@ -1,9 +1,12 @@
 import java.io.Serializable;
 import java.security.Key;
+import java.security.PublicKey;
 
 public class Message implements Serializable {
-    private Key symmetric;
+    private byte[] symmetric;
     private byte[] encryptedData;
+    private PublicKey keyToShare;
+    private int sharekey;
 
     public int getSharekey() {
         return sharekey;
@@ -13,32 +16,28 @@ public class Message implements Serializable {
         this.sharekey = sharekey;
     }
 
-    private int sharekey;
-
-    public Key getKeyToShare() {
+    public PublicKey getKeyToShare() {
         return keyToShare;
     }
 
-    public void setKeyToShare(Key keyToShare) {
+    public void setKeyToShare(PublicKey keyToShare) {
         this.keyToShare = keyToShare;
     }
 
-    private Key keyToShare;
 
-
-    public Message(byte[] encryptedData, Key symmetric) {
+    public Message(byte[] encryptedData, byte[] symmetric) {
         this.encryptedData = encryptedData;
         this.symmetric = symmetric;
         this.sharekey = 0;
     }
 
-    public Message(Key keyToShare)
+    public Message(PublicKey keyToShare)
     {
         this.sharekey = 1;
         this.keyToShare = keyToShare;
     }
 
-    public Key getSymmetric() {
+    public byte[] getSymmetric() {
         return symmetric;
     }
 
