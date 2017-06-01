@@ -18,6 +18,10 @@ public class ChatServer implements Runnable
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
 
+	public PrivateKey getPrivateKey() {
+		return privateKey;
+	}
+
 	public ChatServer(int port)
     	{  
 		try
@@ -94,14 +98,15 @@ public class ChatServer implements Runnable
         	return -1;
     	}
     
-    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException {
+    	public synchronized void handle(int ID, Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException, SignatureException {
 
 			if(message.getSharekey()==0){
 
 			byte[] encryptedData = message.getEncryptedData();
 			SecretKey key = utils.unwrapKey(message.getSymmetric(), this.privateKey);
 			String input = this.utils.decryptMessage(encryptedData, key);
-
+			int id = findClient(ID);
+			boolean verified = utils.verifySign(message.getSignatureBytes(), input.getBytes(), clients[id].getClientPublicKey());
 			if (input.equals(".quit"))
             	{  
                 	int leaving_id = findClient(ID);
@@ -233,25 +238,17 @@ class ChatServerThread extends Thread
 			SecretKey symmetric  = utils.generateKey();
 			byte[] encrypted = utils.encryptMessage(msg.getBytes(), symmetric);
 			byte[] encryptedSymmetric = utils.wrapKey(symmetric,clientPublicKey);
-			Message message = new Message(encrypted, encryptedSymmetric);
+			byte[] signatureBytes = utils.signMessage(msg.getBytes(), server.getPrivateKey());
+			Message message = new Message(encrypted, encryptedSymmetric, signatureBytes);
 			streamOut.writeObject(message);
             streamOut.flush();
         }
        
-        catch(IOException ioexception)
-        {  
-            System.out.println(ID + " ERROR sending message: " + ioexception.getMessage());
-            server.remove(ID);
-            stop();
-        } catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		} catch (BadPaddingException e) {
-			e.printStackTrace();
-		} catch (IllegalBlockSizeException e) {
-			e.printStackTrace();
-		} catch (InvalidKeyException e) {
-			e.printStackTrace();
-		} catch (NoSuchPaddingException e) {
+        catch(IOException ioexception) {
+			System.out.println(ID + " ERROR sending message: " + ioexception.getMessage());
+			server.remove(ID);
+			stop();
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}

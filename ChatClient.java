@@ -66,7 +66,9 @@ public class ChatClient implements Runnable
                SecretKey symmetric  = utils.generateKey();
                byte[] encrypted = utils.encryptMessage(data.getBytes(), symmetric);
                byte[] encryptedSymmetric = utils.wrapKey(symmetric,serverPublicKey);
-               Message message = new Message(encrypted, encryptedSymmetric);
+               byte[] signatureBytes = utils.signMessage(data.getBytes(), clientPrivateKey);
+               //System.out.println(signatureBytes);
+               Message message = new Message(encrypted, encryptedSymmetric, signatureBytes);
                /*System.out.println(message.getData());
                System.out.println(new String(message.getEncryptedData()));
                System.out.println(utils.decryptMessage(encrypted, symmetric));*/
@@ -85,12 +87,13 @@ public class ChatClient implements Runnable
     }
 
 
-    public void handle(Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException {
+    public void handle(Message message) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException, NoSuchAlgorithmException, NoSuchPaddingException, SignatureException {
         if(message.getSharekey()==0){
             byte[] encryptedData = message.getEncryptedData();
             SecretKey key = utils.unwrapKey(message.getSymmetric(), this.clientPrivateKey);
             String msg = this.utils.decryptMessage(encryptedData, key);
-
+            boolean verified = utils.verifySign(message.getSignatureBytes(), msg.getBytes(), serverPublicKey);
+            //System.out.println(verified);
             // Receives message from server
             if (msg.equals(".quit"))
             {

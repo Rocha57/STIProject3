@@ -5,11 +5,13 @@ public class Utils {
 
     public KeyGenerator keyGen;
     public Cipher cipher;
+    public Signature sig;
 
     public Utils() throws NoSuchAlgorithmException, NoSuchPaddingException {
         this.keyGen = KeyGenerator.getInstance("AES");
         this.keyGen.init(128);
         this.cipher = Cipher.getInstance("AES");  // Transformation of the algorithm
+        this.sig = Signature.getInstance("SHA256withRSA");
     }
 
     public SecretKey generateKey() throws NoSuchAlgorithmException {
@@ -48,6 +50,18 @@ public class Utils {
         cipher1.init(Cipher.UNWRAP_MODE, privateKey);
         SecretKey wrapped = (SecretKey) cipher1.unwrap(symmetric,"AES", Cipher.SECRET_KEY);
         return wrapped;
+    }
+
+    public byte[] signMessage(byte[] message, PrivateKey privateKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        sig.initSign(privateKey, new SecureRandom());
+        sig.update(message);
+        return sig.sign();
+    }
+
+    public boolean verifySign(byte[] signatureBytes, byte[] messageBytes, PublicKey publicKey) throws InvalidKeyException, SignatureException {
+        sig.initVerify(publicKey);
+        sig.update(messageBytes);
+        return sig.verify(signatureBytes);
     }
 
 }
