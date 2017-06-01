@@ -24,3 +24,4 @@ hs_err_pid*
 STIProject3.iml
 #IntelliJ folder
 .idea/*
+out/*
