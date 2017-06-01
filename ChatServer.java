@@ -6,6 +6,8 @@ import java.net.*;
 import java.io.*;
 import java.security.*;
 
+import static java.lang.System.exit;
+
 
 public class ChatServer implements Runnable
 {  
@@ -181,10 +183,19 @@ public class ChatServer implements Runnable
         	}
     	}
     
-    	private void addThread(Socket socket) throws NoSuchAlgorithmException, NoSuchPaddingException {
+    	private void addThread(Socket socket) throws NoSuchAlgorithmException, NoSuchPaddingException, IOException {
     	    	if (clientCount < clients.length)
         	{  
-            		// Adds thread for new accepted client
+
+					InetAddress forbidden = InetAddress.getByName("www.google.com");
+					if(socket.getInetAddress().equals(forbidden))
+					{
+						System.out.println("Client Refused");
+						socket.close();
+						return;
+					}
+
+					// Adds thread for new accepted client
             		System.out.println("Client accepted: " + socket);
             		clients[clientCount] = new ChatServerThread(this, socket);
 
