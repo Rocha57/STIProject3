@@ -232,6 +232,7 @@ class ChatServerThread extends Thread
                         BufferedInputStream(socket.getInputStream()));
         streamOut = new ObjectOutputStream(new
                         BufferedOutputStream(socket.getOutputStream()));
+		streamOut.flush();
     }
     
     // Closes thread
