@@ -77,6 +77,19 @@ public class ChatClient implements Runnable
                //streamOut.writeUTF(simmetricEncryption(console.readLine()));
                streamOut.writeObject(message);
                streamOut.flush();
+               this.messageCounter++;
+
+
+               if(messageCounter>100) {
+                   //renewall key after 100 messages
+                   this.utils = new Utils();
+                   KeyPair kp = this.utils.kPGGen(1024);
+
+                   this.clientPrivateKey = kp.getPrivate();
+                   this.clientPublicKey = kp.getPublic();
+                   Message keyShareMessage = new Message(this.clientPublicKey);
+                   streamOut.writeObject(keyShareMessage);
+               }
            }
 
            catch(Exception ioexception)
