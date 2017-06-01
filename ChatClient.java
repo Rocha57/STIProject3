@@ -19,6 +19,7 @@ public class ChatClient implements Runnable
     private PublicKey serverPublicKey = null;
     private PublicKey clientPublicKey = null;
     private PrivateKey clientPrivateKey = null;
+    private int messageCounter = 0;
 
     public ChatClient(String serverName, int serverPort)
     {
@@ -94,6 +95,11 @@ public class ChatClient implements Runnable
             String msg = this.utils.decryptMessage(encryptedData, key);
             boolean verified = utils.verifySign(message.getSignatureBytes(), msg.getBytes(), serverPublicKey);
             //System.out.println(verified);
+
+
+            //counts received messages
+            this.messageCounter++;
+
             // Receives message from server
             if (!verified){
                 System.out.println("WARNING - MESSAGE COMPROMISED");
@@ -111,7 +117,7 @@ public class ChatClient implements Runnable
             }
         else if(message.getSharekey()==1)
         {
-            //System.out.println("Server key shared!");
+            System.out.println("Server key shared!");
             this.serverPublicKey = message.getKeyToShare();
 
         }

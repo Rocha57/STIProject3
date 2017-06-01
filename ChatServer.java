@@ -16,6 +16,7 @@ public class ChatServer implements Runnable
 	private Utils utils = null;
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
+	private int messageCounter = 0;
 
 	public PrivateKey getPrivateKey() {
 		return privateKey;
@@ -106,6 +107,7 @@ public class ChatServer implements Runnable
 			String input = this.utils.decryptMessage(encryptedData, key);
 			int id = findClient(ID);
 			boolean verified = utils.verifySign(message.getSignatureBytes(), input.getBytes(), clients[id].getClientPublicKey());
+			this.messageCounter++;
 			if (!verified) {
 				System.out.println("WARNING - MESSAGE COMPROMISED");
 				return;
@@ -124,7 +126,23 @@ public class ChatServer implements Runnable
         	else
             		// Brodcast message for every other client online
             		for (int i = 0; i < clientCount; i++)
-                		clients[i].send(ID + ": " + input);   
+                		clients[i].send(ID + ": " + input);
+
+					if(messageCounter>2)
+					{
+						this.utils = new Utils();
+						KeyPair kp = this.utils.kPGGen(1024);
+
+						this.privateKey = kp.getPrivate();
+						this.publicKey = kp.getPublic();
+
+						Message msg = new Message(this.publicKey);
+						for (int i = 0; i < clientCount; i++)
+
+							clients[i].shareKey(msg);
+
+						this.messageCounter = 0;
+					}
     	}
     	else
     		{
