@@ -6,8 +6,6 @@ import java.net.*;
 import java.io.*;
 import java.security.*;
 
-import static java.lang.System.exit;
-
 
 public class ChatServer implements Runnable
 {  
@@ -19,6 +17,7 @@ public class ChatServer implements Runnable
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
 	private int messageCounter = 0;
+	private int forbiddenIDs[];
 
 	public PrivateKey getPrivateKey() {
 		return privateKey;
@@ -38,7 +37,7 @@ public class ChatServer implements Runnable
 
 				this.privateKey = kp.getPrivate();
 				this.publicKey = kp.getPublic();
-
+				this.forbiddenIDs = new int[]{23, 12, 7};
             		start();
         	}
       		catch(IOException ioexception)
@@ -149,11 +148,12 @@ public class ChatServer implements Runnable
     	else if (message.getSharekey()==2)
     	{
     		//verifica se o ID do cliente nao e proibido (uso 23 como exemplo)
-    		if(message.getID()==23)
-    		{
-				System.out.println("CLient refused by ID");
-				clients[findClient(ID)].close();
-				return;
+			for (int i = 0; i < this.forbiddenIDs.length; i++) {
+				if (message.getID() == this.forbiddenIDs[i]) {
+					System.out.println("CLient refused by ID");
+					clients[findClient(ID)].close();
+					return;
+				}
 			}
 		}
     	else if (message.getSharekey()==1)
